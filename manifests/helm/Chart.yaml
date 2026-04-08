@@ -1,0 +1,22 @@
+apiVersion: v2
+name: predictable-path-provisioner
+description: A Helm chart for P3 (Predictable Path Provisioner) - K8s hostpath provisioner with human readable paths
+type: application
+version: 0.1.0
+appVersion: "v0.0.0"
+home: https://github.com/heathcliff26/predictable-path-provisioner
+maintainers:
+  - name: heathcliff26
+    email: heathcliff@heathcliff.eu
+keywords:
+  - kubernetes
+  - k8s
+  - storage
+  - provisioner
+  - hostpath
+  - local
+  - volume
+  - p3
+  - predictable-path-provisioner
+sources:
+  - https://github.com/heathcliff26/predictable-path-provisioner
