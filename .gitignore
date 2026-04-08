@@ -1,0 +1,12 @@
+# Ignore binaries
+/bin
+
+# Ignore generated manifests
+/manifests/release
+
+# Generated go-test coverage reports
+coverprofiles/
+coverprofile.out
+
+# Ignore files created for testing
+/test-*.yaml

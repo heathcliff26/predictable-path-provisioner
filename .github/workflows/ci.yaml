@@ -1,0 +1,124 @@
+---
+name: CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Use to set tag, default: rolling"
+        type: string
+        default: "rolling"
+        required: false
+      dry-run:
+        description: "Do not push image"
+        type: boolean
+        default: false
+        required: false
+      latest:
+        description: "Tag latest"
+        type: boolean
+        default: false
+        required: false
+  workflow_call:
+    inputs:
+      tag:
+        description: "Use to set tag, default: rolling"
+        type: string
+        default: "rolling"
+        required: false
+      dry-run:
+        description: "Do not push image"
+        type: boolean
+        default: false
+        required: false
+      latest:
+        description: "Tag latest"
+        type: boolean
+        default: false
+        required: false
+  push:
+    branches: ["main"]
+    paths:
+      - "go.mod"
+      - "go.sum"
+      - "*.go"
+      - "**/*.go"
+      - "Dockerfile"
+  pull_request:
+    branches: ["main"]
+  merge_group:
+    branches: ["main"]
+
+jobs:
+  lint:
+    uses: heathcliff26/ci/.github/workflows/golang-lint.yaml@main
+    permissions:
+      contents: read
+
+  gosec:
+    uses: heathcliff26/ci/.github/workflows/golang-gosec.yaml@main
+    permissions:
+      contents: read
+      security-events: write
+
+  unit-tests:
+    uses: heathcliff26/ci/.github/workflows/golang-unit-tests.yaml@main
+    permissions:
+      contents: read
+    with:
+      coveralls: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+
+  validate:
+    uses: heathcliff26/ci/.github/workflows/golang-build.yaml@main
+    permissions:
+      contents: read
+    with:
+      cache: false
+      cmd: "make validate"
+
+  build-image:
+    uses: heathcliff26/ci/.github/workflows/build-container.yaml@main
+    needs:
+      - lint
+      - unit-tests
+      - validate
+      - gosec
+      - build-manifests
+    permissions:
+      contents: read
+      packages: write
+    with:
+      app: p3
+      tag: "${{ inputs.tag == '' && 'rolling' || inputs.tag }}"
+      tags: "${{ inputs.latest == true && 'type=raw,value=latest' || '' }}"
+      dry-run: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.dry-run == 'true' }}
+    secrets: inherit
+
+  build-manifests:
+    uses: heathcliff26/ci/.github/workflows/golang-build.yaml@main
+    permissions:
+      contents: read
+    with:
+      release: "${{ github.event_name == 'pull_request' && 'dev' || inputs.tag == '' && 'rolling' || inputs.tag }}"
+      artifact: "manifests/release/*.yaml"
+      artifact-name: "manifests"
+      cmd: "make manifests"
+      cache: false
+    secrets: inherit
+
+  push-helm:
+    uses: heathcliff26/ci/.github/workflows/push-helm-chart.yaml@main
+    if: ${{ inputs.tag != '' && inputs.tag != 'rolling' }}
+    needs:
+      - lint
+      - unit-tests
+      - validate
+      - gosec
+      - build-manifests
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: "${{ inputs.tag }}"
+      dry-run: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.dry-run == 'true' }}
+    secrets: inherit

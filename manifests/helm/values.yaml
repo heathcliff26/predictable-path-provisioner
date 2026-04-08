@@ -1,0 +1,89 @@
+# Default values for predictable-path-provisioner.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Container image configuration
+image:
+  repository: ghcr.io/heathcliff26/p3
+  pullPolicy: IfNotPresent
+  # Overrides the image tag, defaults to chart version.
+  tag: ""
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+# Annotations for the daemonset
+annotations: {}
+
+# Set the log level for the daemonset.
+logLevel: "info"
+
+# The name of the storage provisioner to use.
+provisionerName: "heathcliff.eu/predictable-path-provisioner"
+
+# Create a storage class for the provisioner
+storageClass:
+  # Whether to create a storage class for the provisioner
+  create: true
+  # The name of the storage class
+  name: "p3"
+  # Should the storage class be the default one
+  default: true
+  # The reclaim policy for the storage class
+  reclaimPolicy: "Delete"
+  # The volume binding mode for the storage class
+  volumeBindingMode: "Immediate"
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# RBAC configuration
+rbac:
+  create: true
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
