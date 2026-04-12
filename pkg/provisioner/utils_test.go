@@ -1,0 +1,160 @@
+package provisioner
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+)
+
+func TestEvalPathTemplate(t *testing.T) {
+	tMatrix := []struct {
+		Name                          string
+		PVCName, PVCNamespace, PVCUID string
+		Template                      string
+		Expected                      string
+	}{
+		{
+			Name:         "DefaultTemplate",
+			PVCName:      "my-pvc",
+			PVCNamespace: "my-namespace",
+			PVCUID:       "12345",
+			Template:     defaultPathTemplate,
+			Expected:     "my-namespace/my-pvc",
+		},
+		{
+			Name:         "WithUID",
+			PVCName:      "my-pvc",
+			PVCNamespace: "my-namespace",
+			PVCUID:       "12345",
+			Template:     "pvc-{{pvc.uid}}",
+			Expected:     "pvc-12345",
+		},
+		{
+			Name:         "WithoutVariables",
+			PVCName:      "my-pvc",
+			PVCNamespace: "my-namespace",
+			PVCUID:       "12345",
+			Template:     "pvc-without-variables",
+			Expected:     "pvc-without-variables",
+		},
+		{
+			Name:         "VariablesAndConstants",
+			PVCName:      "my-pvc",
+			PVCNamespace: "my-namespace",
+			PVCUID:       "12345",
+			Template:     "ns-{{pvc.namespace}}-pvc-{{pvc.name}}-uid-{{pvc.uid}}",
+			Expected:     "ns-my-namespace-pvc-my-pvc-uid-12345",
+		},
+	}
+	for _, tCase := range tMatrix {
+		t.Run(tCase.Name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      tCase.PVCName,
+					Namespace: tCase.PVCNamespace,
+					UID:       types.UID(tCase.PVCUID),
+				},
+			}
+			result := evalPathTemplate(tCase.Template, pvc)
+			assert.Equal(tCase.Expected, result, "Should match the expected path")
+		})
+	}
+}
+
+func TestCreateFilePath(t *testing.T) {
+	cfg := storageConfig{
+		BasePath:     "/base/path",
+		PathTemplate: "{{pvc.namespace}}/{{pvc.name}}",
+	}
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-pvc",
+			Namespace: "my-namespace",
+			UID:       types.UID("12345"),
+		},
+	}
+	expected := "/base/path/my-namespace/my-pvc"
+	result := createFilePath(cfg, pvc)
+	assert.Equal(t, expected, result, "Should create the correct file path")
+}
+
+func TestNewStorageConfig(t *testing.T) {
+	tMatrix := []struct {
+		Name           string
+		Parameters     map[string]string
+		ExpectedConfig storageConfig
+		ExpectError    string
+	}{
+		{
+			Name:       "NoParameters",
+			Parameters: map[string]string{},
+			ExpectedConfig: storageConfig{
+				BasePath:     defaultBasePath,
+				PathTemplate: defaultPathTemplate,
+			},
+		},
+		{
+			Name: "ValidParameters",
+			Parameters: map[string]string{
+				parameterBasePath:     "/custom/base/path",
+				parameterPathTemplate: "custom/{{pvc.uid}}",
+			},
+			ExpectedConfig: storageConfig{
+				BasePath:     "/custom/base/path",
+				PathTemplate: "custom/{{pvc.uid}}",
+			},
+		},
+		{
+			Name: "EmptyBasePath",
+			Parameters: map[string]string{
+				parameterBasePath: "",
+			},
+			ExpectError: "basePath is required",
+		},
+		{
+			Name: "EmptyPathTemplate",
+			Parameters: map[string]string{
+				parameterPathTemplate: "",
+			},
+			ExpectError: "pathTemplate is required",
+		},
+		{
+			Name: "RelativeBasePath",
+			Parameters: map[string]string{
+				parameterBasePath: "relative/path",
+			},
+			ExpectError: "basePath must be an absolute path",
+		},
+		{
+			Name: "InvalidPathTemplate",
+			Parameters: map[string]string{
+				parameterPathTemplate: "../pvc-{{pvc.uid}}",
+			},
+			ExpectError: "pathTemplate must evaluate to a relative path located within basePath",
+		},
+	}
+	for _, tCase := range tMatrix {
+		t.Run(tCase.Name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			sc := &storagev1.StorageClass{
+				Parameters: tCase.Parameters,
+			}
+			cfg, err := newStorageConfig(sc)
+			if tCase.ExpectError != "" {
+				require.Error(t, err, "Should return an error")
+				assert.Contains(err.Error(), tCase.ExpectError, "Error message should contain expected text")
+			} else {
+				assert.NoError(err, "Should not return an error")
+				assert.Equal(tCase.ExpectedConfig, cfg, "Should match the expected storage config")
+			}
+		})
+	}
+}

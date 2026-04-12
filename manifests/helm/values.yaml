@@ -36,6 +36,15 @@ storageClass:
   reclaimPolicy: "Delete"
   # The volume binding mode for the storage class
   volumeBindingMode: "Immediate"
+  # The base path under which the provisioner will create volumes.
+  basePath: "/var/lib/predictable-path-provisioner"
+  # The path template for the provisioner to create volumes.
+  # Supported variables:
+  # - {{pvc.namespace}}: The namespace of the PVC.
+  # - {{pvc.name}}: The name of the PVC.
+  # - {{pvc.uid}}: The UID of the PVC.
+  pathTemplate: "{{pvc.namespace}}/{{pvc.name}}"
+
 
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:

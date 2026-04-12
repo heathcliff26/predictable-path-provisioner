@@ -16,11 +16,13 @@ import (
 const (
 	defaultProvisionerName = "heathcliff.eu/predictable-path-provisioner"
 	defaultBasePath        = "/var/lib/predictable-path-provisioner"
+	defaultPathTemplate    = "{{pvc.namespace}}/{{pvc.name}}"
 
 	pvProvisionedByAnnotation = "pv.kubernetes.io/provisioned-by"
 	hostPrefix                = "/host"
 
-	parameterBasePath = "basePath"
+	parameterBasePath     = "basePath"
+	parameterPathTemplate = "pathTemplate"
 )
 
 type provisioner struct {
@@ -29,7 +31,8 @@ type provisioner struct {
 }
 
 type storageConfig struct {
-	BasePath string
+	BasePath     string
+	PathTemplate string
 }
 
 // Ensure external provisioner interfaces are implemented
@@ -71,18 +74,21 @@ func (p *provisioner) Provision(_ context.Context, opts controller.ProvisionOpti
 	}
 
 	name := opts.PVName
-	// TODO: Implement actual provisioning
-	path := filepath.Join(cfg.BasePath, name)
+	path := createFilePath(cfg, opts.PVC)
+	pathWithHostPrefix := filepath.Join(hostPrefix, path)
 
+	// #nosec G301 -- Directory permissions are decided by umask
 	err = os.MkdirAll(filepath.Join(hostPrefix, cfg.BasePath), 0755)
 	if err != nil {
 		return nil, controller.ProvisioningFinished, fmt.Errorf("failed to create base path: %w", err)
 	}
-	err = os.Mkdir(filepath.Join(hostPrefix, path), 0777)
+	// #nosec G301 -- Directory permissions are decided by umask
+	err = os.MkdirAll(pathWithHostPrefix, 0755)
 	if err != nil {
 		return nil, controller.ProvisioningFinished, fmt.Errorf("failed to create volume: %w", err)
 	}
-	err = os.Chmod(filepath.Join(hostPrefix, path), 0777)
+	// #nosec G302 -- Directory needs to be writable by anyone as the user inside the consuming container is not known and likely not root.
+	err = os.Chmod(pathWithHostPrefix, 0777)
 	if err != nil {
 		return nil, controller.ProvisioningFinished, fmt.Errorf("failed to set permissions on volume: %w", err)
 	}
