@@ -278,6 +278,10 @@ func (p *provisioner) Delete(_ context.Context, pv *corev1.PersistentVolume) err
         if pv == nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("persistent volume can't be nil")
         }</span>
+        <span class="cov0" title="0">if !isForCurrentNode(p.node, pv.Spec.NodeAffinity) </span><span class="cov0" title="0">{
+                slog.Debug("Delete ignored: volume is not on this node", "pv", pv.Name)
+                return &amp;controller.IgnoredError{}
+        }</span>
         <span class="cov0" title="0">if pv.Spec.Local == nil </span><span class="cov0" title="0">{
                 return fmt.Errorf("provided persistent volume is not a local volume")
         }</span>
@@ -453,6 +457,24 @@ func validatePathTemplate(pathTemplate string) error <span class="cov8" title="1
                 return fmt.Errorf("pathTemplate must evaluate to a relative path located within basePath")
         }</span>
         <span class="cov8" title="1">return nil</span>
+}
+
+func isForCurrentNode(nodeName string, affinity *corev1.VolumeNodeAffinity) bool <span class="cov8" title="1">{
+        if affinity == nil || affinity.Required == nil </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">if len(affinity.Required.NodeSelectorTerms) != 1 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">terms := affinity.Required.NodeSelectorTerms[0]
+        if len(terms.MatchExpressions) != 1 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">expr := terms.MatchExpressions[0]
+        if len(expr.Values) != 1 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+        <span class="cov8" title="1">return expr.Key == "kubernetes.io/hostname" &amp;&amp; expr.Operator == corev1.NodeSelectorOpIn &amp;&amp; expr.Values[0] == nodeName</span>
 }
 </pre>
 		
