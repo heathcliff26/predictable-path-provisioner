@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -149,8 +148,7 @@ func TestNewStorageConfig(t *testing.T) {
 			}
 			cfg, err := newStorageConfig(sc)
 			if tCase.ExpectError != "" {
-				require.Error(t, err, "Should return an error")
-				assert.Contains(err.Error(), tCase.ExpectError, "Error message should contain expected text")
+				assert.ErrorContains(err, tCase.ExpectError, "Error message should contain expected text")
 			} else {
 				assert.NoError(err, "Should not return an error")
 				assert.Equal(tCase.ExpectedConfig, cfg, "Should match the expected storage config")

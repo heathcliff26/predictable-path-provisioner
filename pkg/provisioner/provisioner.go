@@ -19,11 +19,12 @@ const (
 	defaultPathTemplate    = "{{pvc.namespace}}/{{pvc.name}}"
 
 	pvProvisionedByAnnotation = "pv.kubernetes.io/provisioned-by"
-	hostPrefix                = "/host"
 
 	parameterBasePath     = "basePath"
 	parameterPathTemplate = "pathTemplate"
 )
+
+var hostPrefix = "/host"
 
 type provisioner struct {
 	name string
