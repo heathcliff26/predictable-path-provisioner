@@ -1,0 +1,527 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>provisioner: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/log.go (0.0%)</option>
+				
+				<option value="file1">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/provisioner.go (0.0%)</option>
+				
+				<option value="file2">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/root.go (0.0%)</option>
+				
+				<option value="file3">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/utils.go (0.0%)</option>
+				
+				<option value="file4">github.com/heathcliff26/predictable-path-provisioner/pkg/version/version.go (90.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package provisioner
+
+import (
+        "log/slog"
+        "os"
+        "strings"
+
+        "github.com/go-logr/logr"
+        ctrl "sigs.k8s.io/controller-runtime"
+)
+
+const (
+        logLevelEnv     = "LOG_LEVEL"
+        logLevelDefault = slog.LevelInfo
+)
+
+func init() <span class="cov0" title="0">{
+        initLogger()
+}</span>
+
+func initLogger() <span class="cov0" title="0">{
+        opts := &amp;slog.HandlerOptions{
+                Level: getLogLevel(),
+        }
+        handler := slog.NewTextHandler(os.Stdout, opts)
+        ctrl.SetLogger(logr.FromSlogHandler(handler))
+        slog.SetDefault(slog.New(handler))
+}</span>
+
+func getLogLevel() slog.Level <span class="cov0" title="0">{
+        levelStr := os.Getenv(logLevelEnv)
+        switch strings.ToLower(levelStr) </span>{
+        case "debug":<span class="cov0" title="0">
+                return slog.LevelDebug</span>
+        case "info":<span class="cov0" title="0">
+                return slog.LevelInfo</span>
+        case "warn":<span class="cov0" title="0">
+                return slog.LevelWarn</span>
+        case "error":<span class="cov0" title="0">
+                return slog.LevelError</span>
+        case "":<span class="cov0" title="0">
+                return logLevelDefault</span>
+        default:<span class="cov0" title="0">
+                slog.Warn("Unknown log level", "level", levelStr, "default", logLevelDefault)
+                return logLevelDefault</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package provisioner
+
+import (
+        "context"
+        "fmt"
+        "log/slog"
+        "os"
+        "path/filepath"
+        "slices"
+
+        corev1 "k8s.io/api/core/v1"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "sigs.k8s.io/sig-storage-lib-external-provisioner/v13/controller"
+)
+
+const (
+        defaultProvisionerName = "heathcliff.eu/predictable-path-provisioner"
+        defaultBasePath        = "/var/lib/predictable-path-provisioner"
+
+        pvProvisionedByAnnotation = "pv.kubernetes.io/provisioned-by"
+        hostPrefix                = "/host"
+
+        parameterBasePath = "basePath"
+)
+
+type provisioner struct {
+        name string
+        node string
+}
+
+type storageConfig struct {
+        BasePath string
+}
+
+// Ensure external provisioner interfaces are implemented
+var _ controller.Provisioner = (*provisioner)(nil)
+var _ controller.BlockProvisioner = (*provisioner)(nil)
+
+func NewProvisioner(name, node string) *provisioner <span class="cov0" title="0">{
+        return &amp;provisioner{
+                name: name,
+                node: node,
+        }
+}</span>
+
+// Implements Provision from controller.Provisioner interface
+//
+// Provision creates a volume i.e. the storage asset and returns a PV object
+// for the volume. The provisioner can return an error (e.g. timeout) and state
+// ProvisioningInBackground to tell the controller that provisioning may be in
+// progress after Provision() finishes. The controller will call Provision()
+// again with the same parameters, assuming that the provisioner continues
+// provisioning the volume. The provisioner must return either final error (with
+// ProvisioningFinished) or success eventually, otherwise the controller will try
+// forever (unless FailedProvisionThreshold is set).
+func (p *provisioner) Provision(_ context.Context, opts controller.ProvisionOptions) (*corev1.PersistentVolume, controller.ProvisioningState, error) <span class="cov0" title="0">{
+        if opts.StorageClass == nil </span><span class="cov0" title="0">{
+                return nil, controller.ProvisioningFinished, fmt.Errorf("storage class is required")
+        }</span>
+        <span class="cov0" title="0">if opts.PVC == nil </span><span class="cov0" title="0">{
+                return nil, controller.ProvisioningFinished, fmt.Errorf("persistent volume claim is required")
+        }</span>
+        <span class="cov0" title="0">if slices.Contains(opts.PVC.Spec.AccessModes, corev1.ReadWriteMany) || slices.Contains(opts.PVC.Spec.AccessModes, corev1.ReadOnlyMany) </span><span class="cov0" title="0">{
+                return nil, controller.ProvisioningFinished, fmt.Errorf("unsupported access modes: volumes can only be mounted on a single host")
+        }</span>
+        <span class="cov0" title="0">slog.Info("Provision called", "pvc.Name", opts.PVC.Name, "pvc.Namespace", opts.PVC.Namespace, "storageClass", opts.StorageClass.Name)
+
+        cfg, err := newStorageConfig(opts.StorageClass)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, controller.ProvisioningFinished, err
+        }</span>
+
+        <span class="cov0" title="0">name := opts.PVName
+        // TODO: Implement actual provisioning
+        path := filepath.Join(cfg.BasePath, name)
+
+        err = os.MkdirAll(filepath.Join(hostPrefix, cfg.BasePath), 0755)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, controller.ProvisioningFinished, fmt.Errorf("failed to create base path: %w", err)
+        }</span>
+        <span class="cov0" title="0">err = os.Mkdir(filepath.Join(hostPrefix, path), 0777)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, controller.ProvisioningFinished, fmt.Errorf("failed to create volume: %w", err)
+        }</span>
+        <span class="cov0" title="0">err = os.Chmod(filepath.Join(hostPrefix, path), 0777)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, controller.ProvisioningFinished, fmt.Errorf("failed to set permissions on volume: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">pv := &amp;corev1.PersistentVolume{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name: name,
+                        Annotations: map[string]string{
+                                pvProvisionedByAnnotation: p.name,
+                        },
+                },
+                Spec: corev1.PersistentVolumeSpec{
+                        Capacity: opts.PVC.Spec.Resources.Requests,
+                        PersistentVolumeSource: corev1.PersistentVolumeSource{
+                                Local: &amp;corev1.LocalVolumeSource{
+                                        Path: path,
+                                },
+                        },
+                        AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+                        ClaimRef: &amp;corev1.ObjectReference{
+                                APIVersion:      opts.PVC.APIVersion,
+                                Kind:            opts.PVC.Kind,
+                                Namespace:       opts.PVC.ObjectMeta.Namespace,
+                                Name:            opts.PVC.ObjectMeta.Name,
+                                UID:             opts.PVC.ObjectMeta.UID,
+                                ResourceVersion: opts.PVC.ObjectMeta.ResourceVersion,
+                        },
+                        PersistentVolumeReclaimPolicy: *opts.StorageClass.ReclaimPolicy,
+                        StorageClassName:              opts.StorageClass.Name,
+                        VolumeMode:                    opts.PVC.Spec.VolumeMode,
+                        NodeAffinity: &amp;corev1.VolumeNodeAffinity{
+                                Required: &amp;corev1.NodeSelector{
+                                        NodeSelectorTerms: []corev1.NodeSelectorTerm{
+                                                {
+                                                        MatchExpressions: []corev1.NodeSelectorRequirement{
+                                                                {
+                                                                        Key:      "kubernetes.io/hostname",
+                                                                        Operator: corev1.NodeSelectorOpIn,
+                                                                        Values:   []string{p.node},
+                                                                },
+                                                        },
+                                                },
+                                        },
+                                },
+                        },
+                },
+        }
+        return pv, controller.ProvisioningFinished, nil</span>
+}
+
+// Implements Delete from controller.Provisioner interface
+//
+// Delete removes the storage asset that was created by Provision backing the
+// given PV. Does not delete the PV object itself.
+//
+// May return IgnoredError to indicate that the call has been ignored and no
+// action taken.
+func (p *provisioner) Delete(_ context.Context, pv *corev1.PersistentVolume) error <span class="cov0" title="0">{
+        if pv == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("persistent volume can't be nil")
+        }</span>
+        <span class="cov0" title="0">if pv.Spec.Local == nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("provided persistent volume is not a local volume")
+        }</span>
+        <span class="cov0" title="0">slog.Info("Delete called", "pv", pv.Name, "path", pv.Spec.Local.Path)
+        return os.RemoveAll(filepath.Join(hostPrefix, pv.Spec.Local.Path))</span>
+}
+
+// Implements SupportsBlock from controller.BlockProvisioner interface
+//
+// SupportsBlock returns whether provisioner supports block volume.
+func (p *provisioner) SupportsBlock(_ context.Context) bool <span class="cov0" title="0">{
+        return false
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package provisioner
+
+import (
+        "context"
+        "log/slog"
+        "os"
+
+        "github.com/heathcliff26/predictable-path-provisioner/pkg/version"
+        "github.com/spf13/cobra"
+        "k8s.io/client-go/kubernetes"
+        "k8s.io/client-go/rest"
+        "sigs.k8s.io/sig-storage-lib-external-provisioner/v13/controller"
+)
+
+func Execute() <span class="cov0" title="0">{
+        cmd := newCMD()
+        err := cmd.Execute()
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("Command exited with error", "err", err)
+                os.Exit(1)
+        }</span>
+}
+
+func newCMD() *cobra.Command <span class="cov0" title="0">{
+        cobra.AddTemplateFunc(
+                "ProgramName", func() string </span><span class="cov0" title="0">{
+                        return version.Name
+                }</span>,
+        )
+
+        <span class="cov0" title="0">rootCmd := &amp;cobra.Command{
+                Use:   version.Name,
+                Short: version.Name + " k8s hostpath provisioner with human readable paths",
+                Run: func(cmd *cobra.Command, _ []string) </span><span class="cov0" title="0">{
+                        run()
+                }</span>,
+        }
+
+        <span class="cov0" title="0">rootCmd.AddCommand(
+                version.NewCommand(),
+        )
+
+        return rootCmd</span>
+}
+
+func run() <span class="cov0" title="0">{
+        config, err := rest.InClusterConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("Failed to get kubeconfig, the provisioner should be run inside a kubernetes cluster", "err", err)
+                os.Exit(1)
+        }</span>
+        <span class="cov0" title="0">client, err := kubernetes.NewForConfig(config)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("Failed to create Kubernetes client", "err", err)
+                os.Exit(1)
+        }</span>
+
+        <span class="cov0" title="0">slog.Info("Starting predictable-path-provisioner", "version", version.Version())
+        node := os.Getenv("NODE_NAME")
+        if node == "" </span><span class="cov0" title="0">{
+                slog.Warn("NODE_NAME environment variable is not set, defaulting to 'localhost'")
+                node = "localhost"
+        }</span>
+        <span class="cov0" title="0">p := NewProvisioner(defaultProvisionerName, node)
+
+        ctx := context.Background()
+
+        ctrl := controller.NewProvisionController(
+                ctx,
+                client,
+                defaultProvisionerName,
+                p,
+                controller.LeaderElection(false),
+        )
+
+        ctrl.Run(ctx)</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package provisioner
+
+import (
+        "fmt"
+        "path/filepath"
+
+        storagev1 "k8s.io/api/storage/v1"
+)
+
+func newStorageConfig(sc *storagev1.StorageClass) (storageConfig, error) <span class="cov0" title="0">{
+        basePath, ok := sc.Parameters[parameterBasePath]
+        if !ok </span><span class="cov0" title="0">{
+                basePath = defaultBasePath
+        }</span>
+        <span class="cov0" title="0">err := validateBasePath(basePath)
+        if err != nil </span><span class="cov0" title="0">{
+                return storageConfig{}, fmt.Errorf("invalid storage class parameters: %w", err)
+        }</span>
+        <span class="cov0" title="0">return storageConfig{
+                BasePath: basePath,
+        }, nil</span>
+}
+
+func validateBasePath(basePath string) error <span class="cov0" title="0">{
+        if basePath == "" </span><span class="cov0" title="0">{
+                return fmt.Errorf("basePath is required")
+        }</span>
+        <span class="cov0" title="0">if !filepath.IsAbs(basePath) </span><span class="cov0" title="0">{
+                return fmt.Errorf("basePath must be an absolute path")
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package version
+
+import (
+        "runtime"
+        "runtime/debug"
+        "strings"
+
+        "github.com/spf13/cobra"
+)
+
+const Name = "P3 (Predictable Path Provisioner)"
+
+// NOTE: The $Format strings are replaced during 'git archive' thanks to the
+// companion .gitattributes file containing 'export-subst' in this same
+// directory.  See also https://git-scm.com/docs/gitattributes
+var gitCommit string = "$Format:%H$" // sha1 from git, output of $(git rev-parse HEAD)
+var gitVersion string = ""
+
+func init() <span class="cov1" title="1">{
+        initGitCommit()
+        initGitVersion()
+}</span>
+
+func initGitCommit() <span class="cov4" title="4">{
+        if strings.HasPrefix(gitCommit, "$Format") </span><span class="cov2" title="2">{
+                var commit string
+                buildinfo, _ := debug.ReadBuildInfo()
+                for _, item := range buildinfo.Settings </span><span class="cov10" title="26">{
+                        if item.Key == "vcs.revision" </span><span class="cov0" title="0">{
+                                commit = item.Value
+                                break</span>
+                        }
+                }
+                <span class="cov2" title="2">if commit == "" </span><span class="cov2" title="2">{
+                        commit = "Unknown"
+                }</span>
+                <span class="cov2" title="2">gitCommit = commit</span>
+        }
+        <span class="cov4" title="4">if gitCommit == "" </span><span class="cov1" title="1">{
+                gitCommit = "Unknown"
+        }</span>
+}
+
+func initGitVersion() <span class="cov1" title="1">{
+        if gitVersion == "" </span><span class="cov1" title="1">{
+                buildinfo, _ := debug.ReadBuildInfo()
+                gitVersion = buildinfo.Main.Version
+        }</span>
+}
+
+// Create a new version command with the given app name
+func NewCommand() *cobra.Command <span class="cov1" title="1">{
+        cmd := &amp;cobra.Command{
+                Use:   "version",
+                Short: "Print version information and exit",
+                Run: func(cmd *cobra.Command, args []string) </span><span class="cov0" title="0">{
+                        cmd.Print(VersionInfoString())
+                }</span>,
+        }
+        // Override to prevent parent function from running
+        <span class="cov1" title="1">cmd.PersistentPreRun = func(cmd *cobra.Command, args []string) </span>{<span class="cov0" title="0">}</span>
+
+        <span class="cov1" title="1">return cmd</span>
+}
+
+// Return the version string
+func Version() string <span class="cov1" title="1">{
+        return gitVersion
+}</span>
+
+// Return a formatted string containing the version, git commit and go version the app was compiled with.
+func VersionInfoString() string <span class="cov1" title="1">{
+        commit := gitCommit
+        if len(commit) &gt; 7 </span><span class="cov1" title="1">{
+                commit = commit[:7]
+        }</span>
+
+        <span class="cov1" title="1">result := Name + ":\n"
+        result += "    Version: " + gitVersion + "\n"
+        result += "    Commit:  " + commit + "\n"
+        result += "    Go:      " + runtime.Version() + "\n"
+
+        return result</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
