@@ -80,3 +80,21 @@ func validatePathTemplate(pathTemplate string) error {
 	}
 	return nil
 }
+
+func isForCurrentNode(nodeName string, affinity *corev1.VolumeNodeAffinity) bool {
+	if affinity == nil || affinity.Required == nil {
+		return false
+	}
+	if len(affinity.Required.NodeSelectorTerms) != 1 {
+		return false
+	}
+	terms := affinity.Required.NodeSelectorTerms[0]
+	if len(terms.MatchExpressions) != 1 {
+		return false
+	}
+	expr := terms.MatchExpressions[0]
+	if len(expr.Values) != 1 {
+		return false
+	}
+	return expr.Key == "kubernetes.io/hostname" && expr.Operator == corev1.NodeSelectorOpIn && expr.Values[0] == nodeName
+}
