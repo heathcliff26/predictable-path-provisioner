@@ -13,15 +13,14 @@ import (
 )
 
 func Execute() {
-	cmd := newCMD()
+	cmd := NewRootCommand()
 	err := cmd.Execute()
 	if err != nil {
-		slog.Error("Command exited with error", "err", err)
 		os.Exit(1)
 	}
 }
 
-func newCMD() *cobra.Command {
+func NewRootCommand() *cobra.Command {
 	cobra.AddTemplateFunc(
 		"ProgramName", func() string {
 			return version.Name
@@ -44,6 +43,12 @@ func newCMD() *cobra.Command {
 }
 
 func run() {
+	node := os.Getenv("NODE_NAME")
+	if node == "" {
+		slog.Error("NODE_NAME environment variable is not set")
+		os.Exit(1)
+	}
+
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		slog.Error("Failed to get kubeconfig, the provisioner should be run inside a kubernetes cluster", "err", err)
@@ -56,11 +61,7 @@ func run() {
 	}
 
 	slog.Info("Starting predictable-path-provisioner", "version", version.Version())
-	node := os.Getenv("NODE_NAME")
-	if node == "" {
-		slog.Warn("NODE_NAME environment variable is not set, defaulting to 'localhost'")
-		node = "localhost"
-	}
+
 	p := NewProvisioner(defaultProvisionerName, node)
 
 	ctx := context.Background()
