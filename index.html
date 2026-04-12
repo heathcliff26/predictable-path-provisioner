@@ -55,13 +55,13 @@
 			<div id="nav">
 				<select id="files">
 				
-				<option value="file0">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/log.go (0.0%)</option>
+				<option value="file0">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/log.go (57.1%)</option>
 				
 				<option value="file1">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/provisioner.go (0.0%)</option>
 				
 				<option value="file2">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/root.go (0.0%)</option>
 				
-				<option value="file3">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/utils.go (0.0%)</option>
+				<option value="file3">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/utils.go (100.0%)</option>
 				
 				<option value="file4">github.com/heathcliff26/predictable-path-provisioner/pkg/version/version.go (90.0%)</option>
 				
@@ -70,17 +70,8 @@
 			<div id="legend">
 				<span>not tracked</span>
 			
-				<span class="cov0">no coverage</span>
-				<span class="cov1">low coverage</span>
-				<span class="cov2">*</span>
-				<span class="cov3">*</span>
-				<span class="cov4">*</span>
-				<span class="cov5">*</span>
-				<span class="cov6">*</span>
-				<span class="cov7">*</span>
-				<span class="cov8">*</span>
-				<span class="cov9">*</span>
-				<span class="cov10">high coverage</span>
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
 			
 			</div>
 		</div>
@@ -102,11 +93,11 @@ const (
         logLevelDefault = slog.LevelInfo
 )
 
-func init() <span class="cov0" title="0">{
+func init() <span class="cov8" title="1">{
         initLogger()
 }</span>
 
-func initLogger() <span class="cov0" title="0">{
+func initLogger() <span class="cov8" title="1">{
         opts := &amp;slog.HandlerOptions{
                 Level: getLogLevel(),
         }
@@ -115,7 +106,7 @@ func initLogger() <span class="cov0" title="0">{
         slog.SetDefault(slog.New(handler))
 }</span>
 
-func getLogLevel() slog.Level <span class="cov0" title="0">{
+func getLogLevel() slog.Level <span class="cov8" title="1">{
         levelStr := os.Getenv(logLevelEnv)
         switch strings.ToLower(levelStr) </span>{
         case "debug":<span class="cov0" title="0">
@@ -126,7 +117,7 @@ func getLogLevel() slog.Level <span class="cov0" title="0">{
                 return slog.LevelWarn</span>
         case "error":<span class="cov0" title="0">
                 return slog.LevelError</span>
-        case "":<span class="cov0" title="0">
+        case "":<span class="cov8" title="1">
                 return logLevelDefault</span>
         default:<span class="cov0" title="0">
                 slog.Warn("Unknown log level", "level", levelStr, "default", logLevelDefault)
@@ -153,11 +144,13 @@ import (
 const (
         defaultProvisionerName = "heathcliff.eu/predictable-path-provisioner"
         defaultBasePath        = "/var/lib/predictable-path-provisioner"
+        defaultPathTemplate    = "{{pvc.namespace}}/{{pvc.name}}"
 
         pvProvisionedByAnnotation = "pv.kubernetes.io/provisioned-by"
         hostPrefix                = "/host"
 
-        parameterBasePath = "basePath"
+        parameterBasePath     = "basePath"
+        parameterPathTemplate = "pathTemplate"
 )
 
 type provisioner struct {
@@ -166,7 +159,8 @@ type provisioner struct {
 }
 
 type storageConfig struct {
-        BasePath string
+        BasePath     string
+        PathTemplate string
 }
 
 // Ensure external provisioner interfaces are implemented
@@ -208,18 +202,21 @@ func (p *provisioner) Provision(_ context.Context, opts controller.ProvisionOpti
         }</span>
 
         <span class="cov0" title="0">name := opts.PVName
-        // TODO: Implement actual provisioning
-        path := filepath.Join(cfg.BasePath, name)
+        path := createFilePath(cfg, opts.PVC)
+        pathWithHostPrefix := filepath.Join(hostPrefix, path)
 
+        // #nosec G301 -- Directory permissions are decided by umask
         err = os.MkdirAll(filepath.Join(hostPrefix, cfg.BasePath), 0755)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, controller.ProvisioningFinished, fmt.Errorf("failed to create base path: %w", err)
         }</span>
-        <span class="cov0" title="0">err = os.Mkdir(filepath.Join(hostPrefix, path), 0777)
+        // #nosec G301 -- Directory permissions are decided by umask
+        <span class="cov0" title="0">err = os.MkdirAll(pathWithHostPrefix, 0755)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, controller.ProvisioningFinished, fmt.Errorf("failed to create volume: %w", err)
         }</span>
-        <span class="cov0" title="0">err = os.Chmod(filepath.Join(hostPrefix, path), 0777)
+        // #nosec G302 -- Directory needs to be writable by anyone as the user inside the consuming container is not known and likely not root.
+        <span class="cov0" title="0">err = os.Chmod(pathWithHostPrefix, 0777)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, controller.ProvisioningFinished, fmt.Errorf("failed to set permissions on volume: %w", err)
         }</span>
@@ -380,32 +377,82 @@ func run() <span class="cov0" title="0">{
 import (
         "fmt"
         "path/filepath"
+        "strings"
 
+        corev1 "k8s.io/api/core/v1"
         storagev1 "k8s.io/api/storage/v1"
+        metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+        "k8s.io/apimachinery/pkg/types"
 )
 
-func newStorageConfig(sc *storagev1.StorageClass) (storageConfig, error) <span class="cov0" title="0">{
+func newStorageConfig(sc *storagev1.StorageClass) (storageConfig, error) <span class="cov8" title="1">{
         basePath, ok := sc.Parameters[parameterBasePath]
-        if !ok </span><span class="cov0" title="0">{
+        if !ok </span><span class="cov8" title="1">{
                 basePath = defaultBasePath
         }</span>
-        <span class="cov0" title="0">err := validateBasePath(basePath)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">err := validateBasePath(basePath)
+        if err != nil </span><span class="cov8" title="1">{
                 return storageConfig{}, fmt.Errorf("invalid storage class parameters: %w", err)
         }</span>
-        <span class="cov0" title="0">return storageConfig{
-                BasePath: basePath,
+        <span class="cov8" title="1">pathTemplate, ok := sc.Parameters[parameterPathTemplate]
+        if !ok </span><span class="cov8" title="1">{
+                pathTemplate = defaultPathTemplate
+        }</span>
+        <span class="cov8" title="1">err = validatePathTemplate(pathTemplate)
+        if err != nil </span><span class="cov8" title="1">{
+                return storageConfig{}, fmt.Errorf("invalid storage class parameters: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return storageConfig{
+                BasePath:     basePath,
+                PathTemplate: pathTemplate,
         }, nil</span>
 }
 
-func validateBasePath(basePath string) error <span class="cov0" title="0">{
-        if basePath == "" </span><span class="cov0" title="0">{
+func createFilePath(cfg storageConfig, pvc *corev1.PersistentVolumeClaim) string <span class="cov8" title="1">{
+        volume := evalPathTemplate(cfg.PathTemplate, pvc)
+        return filepath.Join(cfg.BasePath, volume)
+}</span>
+
+func evalPathTemplate(template string, pvc *corev1.PersistentVolumeClaim) string <span class="cov8" title="1">{
+        values := map[string]string{
+                "{{pvc.namespace}}": pvc.Namespace,
+                "{{pvc.name}}":      pvc.Name,
+                "{{pvc.uid}}":       string(pvc.UID),
+        }
+        volume := template
+        for k, v := range values </span><span class="cov8" title="1">{
+                volume = strings.ReplaceAll(volume, k, v)
+        }</span>
+        <span class="cov8" title="1">return volume</span>
+}
+
+func validateBasePath(basePath string) error <span class="cov8" title="1">{
+        if basePath == "" </span><span class="cov8" title="1">{
                 return fmt.Errorf("basePath is required")
         }</span>
-        <span class="cov0" title="0">if !filepath.IsAbs(basePath) </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if !filepath.IsAbs(basePath) </span><span class="cov8" title="1">{
                 return fmt.Errorf("basePath must be an absolute path")
         }</span>
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func validatePathTemplate(pathTemplate string) error <span class="cov8" title="1">{
+        if pathTemplate == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("pathTemplate is required")
+        }</span>
+        <span class="cov8" title="1">volume := evalPathTemplate(pathTemplate, &amp;corev1.PersistentVolumeClaim{
+                ObjectMeta: metav1.ObjectMeta{
+                        Name:      "test-pvc",
+                        Namespace: "test-namespace",
+                        UID:       types.UID("12345"),
+                },
+        })
+
+        if filepath.Join(defaultBasePath, volume) != fmt.Sprintf("%s/%s", defaultBasePath, volume) </span><span class="cov8" title="1">{
+                return fmt.Errorf("pathTemplate must evaluate to a relative path located within basePath")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
 }
 </pre>
 		
@@ -427,40 +474,40 @@ const Name = "P3 (Predictable Path Provisioner)"
 var gitCommit string = "$Format:%H$" // sha1 from git, output of $(git rev-parse HEAD)
 var gitVersion string = ""
 
-func init() <span class="cov1" title="1">{
+func init() <span class="cov8" title="1">{
         initGitCommit()
         initGitVersion()
 }</span>
 
-func initGitCommit() <span class="cov4" title="4">{
-        if strings.HasPrefix(gitCommit, "$Format") </span><span class="cov2" title="2">{
+func initGitCommit() <span class="cov8" title="1">{
+        if strings.HasPrefix(gitCommit, "$Format") </span><span class="cov8" title="1">{
                 var commit string
                 buildinfo, _ := debug.ReadBuildInfo()
-                for _, item := range buildinfo.Settings </span><span class="cov10" title="26">{
+                for _, item := range buildinfo.Settings </span><span class="cov8" title="1">{
                         if item.Key == "vcs.revision" </span><span class="cov0" title="0">{
                                 commit = item.Value
                                 break</span>
                         }
                 }
-                <span class="cov2" title="2">if commit == "" </span><span class="cov2" title="2">{
+                <span class="cov8" title="1">if commit == "" </span><span class="cov8" title="1">{
                         commit = "Unknown"
                 }</span>
-                <span class="cov2" title="2">gitCommit = commit</span>
+                <span class="cov8" title="1">gitCommit = commit</span>
         }
-        <span class="cov4" title="4">if gitCommit == "" </span><span class="cov1" title="1">{
+        <span class="cov8" title="1">if gitCommit == "" </span><span class="cov8" title="1">{
                 gitCommit = "Unknown"
         }</span>
 }
 
-func initGitVersion() <span class="cov1" title="1">{
-        if gitVersion == "" </span><span class="cov1" title="1">{
+func initGitVersion() <span class="cov8" title="1">{
+        if gitVersion == "" </span><span class="cov8" title="1">{
                 buildinfo, _ := debug.ReadBuildInfo()
                 gitVersion = buildinfo.Main.Version
         }</span>
 }
 
 // Create a new version command with the given app name
-func NewCommand() *cobra.Command <span class="cov1" title="1">{
+func NewCommand() *cobra.Command <span class="cov8" title="1">{
         cmd := &amp;cobra.Command{
                 Use:   "version",
                 Short: "Print version information and exit",
@@ -469,24 +516,24 @@ func NewCommand() *cobra.Command <span class="cov1" title="1">{
                 }</span>,
         }
         // Override to prevent parent function from running
-        <span class="cov1" title="1">cmd.PersistentPreRun = func(cmd *cobra.Command, args []string) </span>{<span class="cov0" title="0">}</span>
+        <span class="cov8" title="1">cmd.PersistentPreRun = func(cmd *cobra.Command, args []string) </span>{<span class="cov0" title="0">}</span>
 
-        <span class="cov1" title="1">return cmd</span>
+        <span class="cov8" title="1">return cmd</span>
 }
 
 // Return the version string
-func Version() string <span class="cov1" title="1">{
+func Version() string <span class="cov8" title="1">{
         return gitVersion
 }</span>
 
 // Return a formatted string containing the version, git commit and go version the app was compiled with.
-func VersionInfoString() string <span class="cov1" title="1">{
+func VersionInfoString() string <span class="cov8" title="1">{
         commit := gitCommit
-        if len(commit) &gt; 7 </span><span class="cov1" title="1">{
+        if len(commit) &gt; 7 </span><span class="cov8" title="1">{
                 commit = commit[:7]
         }</span>
 
-        <span class="cov1" title="1">result := Name + ":\n"
+        <span class="cov8" title="1">result := Name + ":\n"
         result += "    Version: " + gitVersion + "\n"
         result += "    Commit:  " + commit + "\n"
         result += "    Go:      " + runtime.Version() + "\n"
