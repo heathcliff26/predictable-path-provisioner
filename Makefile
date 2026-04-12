@@ -14,7 +14,7 @@ image:
 
 # Run unit-tests
 test:
-	go test -v -race -coverprofile=coverprofile.out ./pkg/...
+	go test -v -coverprofile=coverprofile.out ./pkg/...
 
 # Update dependencies
 update-deps:

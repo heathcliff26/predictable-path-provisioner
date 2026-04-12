@@ -6,8 +6,11 @@ metadata:
   labels:
     {{- include "p3.labels" . | nindent 4 }}
   annotations:
-    storageclass.kubernetes.io/is-default-class: "{{ .Values.storageClass.default }}"
+    storageclass.kubernetes.io/is-default-class: {{ .Values.storageClass.default | quote }}
 provisioner: {{ .Values.provisionerName }}
+parameters:
+  basePath: {{ .Values.storageClass.basePath | quote }}
+  pathTemplate: {{ .Values.storageClass.pathTemplate | quote }}
 reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
 volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
 {{- end }}

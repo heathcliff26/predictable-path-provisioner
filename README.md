@@ -59,7 +59,7 @@ It's behaviour can be configured via the StorageClass parameters. The following 
 | Parameter  | Default                                 | Description                                                                                           |
 | ---------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `basePath` | `/var/lib/predictable-path-provisioner` | The base directory on the host under which the volumes will be created. Needs to be an absolute path. |
-| TODO: `pathTemplate` | `{{pvc.Namespace}}/{{pvc.Name}}` | The template for the volume folder. It accepts the following templates (case sensitive): `pvc.name`, `pvc.namespace`, `pvc.uid` |
+| `pathTemplate` | `{{pvc.namespace}}/{{pvc.name}}` | The template for the volume folder. It accepts the following templates (case sensitive): `pvc.name`, `pvc.namespace`, `pvc.uid` |
 
 ### Example storage classes
 

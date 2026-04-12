@@ -26,6 +26,9 @@ metadata:
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: heathcliff.eu/predictable-path-provisioner
+parameters:
+  basePath: "/var/lib/predictable-path-provisioner"
+  pathTemplate: "{{pvc.namespace}}/{{pvc.name}}"
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 ---
