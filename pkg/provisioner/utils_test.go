@@ -158,3 +158,196 @@ func TestNewStorageConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestIsForCurrentNode(t *testing.T) {
+	tMatrix := []struct {
+		Name     string
+		Affinity *corev1.VolumeNodeAffinity
+		Expected bool
+	}{
+		{
+			Name:     "NilAffinity",
+			Affinity: nil,
+			Expected: false,
+		},
+		{
+			Name: "NilRequired",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: nil,
+			},
+			Expected: false,
+		},
+		{
+			Name: "EmptyNodeSelectorTerms",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "MultipleNodeSelectorTerms",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{},
+						{},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "EmptyMatchExpressions",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{},
+						},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "MultipleMatchExpressions",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{},
+								{},
+							},
+						},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "EmptyValues",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "kubernetes.io/hostname",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{},
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "MultipleValues",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "kubernetes.io/hostname",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"node1", "node2"},
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "WrongKey",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "wrong/key",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"node1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "WrongOperator",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "kubernetes.io/hostname",
+									Operator: corev1.NodeSelectorOpNotIn,
+									Values:   []string{"node1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "NonMatchingNodeName",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "kubernetes.io/hostname",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"node2"},
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: false,
+		},
+		{
+			Name: "MatchingNodeName",
+			Affinity: &corev1.VolumeNodeAffinity{
+				Required: &corev1.NodeSelector{
+					NodeSelectorTerms: []corev1.NodeSelectorTerm{
+						{
+							MatchExpressions: []corev1.NodeSelectorRequirement{
+								{
+									Key:      "kubernetes.io/hostname",
+									Operator: corev1.NodeSelectorOpIn,
+									Values:   []string{"node1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			Expected: true,
+		},
+	}
+	for _, tCase := range tMatrix {
+		t.Run(tCase.Name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			result := isForCurrentNode("node1", tCase.Affinity)
+			assert.Equal(tCase.Expected, result, "Should match the expected result")
+		})
+	}
+}

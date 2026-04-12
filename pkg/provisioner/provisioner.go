@@ -150,6 +150,10 @@ func (p *provisioner) Delete(_ context.Context, pv *corev1.PersistentVolume) err
 	if pv == nil {
 		return fmt.Errorf("persistent volume can't be nil")
 	}
+	if !isForCurrentNode(p.node, pv.Spec.NodeAffinity) {
+		slog.Debug("Delete ignored: volume is not on this node", "pv", pv.Name)
+		return &controller.IgnoredError{}
+	}
 	if pv.Spec.Local == nil {
 		return fmt.Errorf("provided persistent volume is not a local volume")
 	}
