@@ -143,7 +143,7 @@ import (
 
 const (
         defaultProvisionerName = "heathcliff.eu/predictable-path-provisioner"
-        defaultBasePath        = "/var/lib/predictable-path-provisioner"
+        DefaultBasePath        = "/var/lib/predictable-path-provisioner"
         defaultPathTemplate    = "{{pvc.namespace}}/{{pvc.name}}"
 
         pvProvisionedByAnnotation = "pv.kubernetes.io/provisioned-by"
@@ -394,7 +394,7 @@ import (
 func newStorageConfig(sc *storagev1.StorageClass) (storageConfig, error) <span class="cov8" title="1">{
         basePath, ok := sc.Parameters[parameterBasePath]
         if !ok </span><span class="cov8" title="1">{
-                basePath = defaultBasePath
+                basePath = DefaultBasePath
         }</span>
         <span class="cov8" title="1">err := validateBasePath(basePath)
         if err != nil </span><span class="cov8" title="1">{
@@ -455,7 +455,7 @@ func validatePathTemplate(pathTemplate string) error <span class="cov8" title="1
                 },
         })
 
-        if filepath.Join(defaultBasePath, volume) != fmt.Sprintf("%s/%s", defaultBasePath, volume) </span><span class="cov8" title="1">{
+        if filepath.Join(DefaultBasePath, volume) != fmt.Sprintf("%s/%s", DefaultBasePath, volume) </span><span class="cov8" title="1">{
                 return fmt.Errorf("pathTemplate must evaluate to a relative path located within basePath")
         }</span>
         <span class="cov8" title="1">return nil</span>
