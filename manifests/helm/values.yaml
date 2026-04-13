@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# Container image configuration
+# Container image configuration.
 image:
   repository: ghcr.io/heathcliff26/p3
   pullPolicy: IfNotPresent
@@ -15,7 +15,7 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Annotations for the daemonset
+# Annotations for the daemonset.
 annotations: {}
 
 # Set the log level for the daemonset.
@@ -24,18 +24,20 @@ logLevel: "info"
 # The name of the storage provisioner to use.
 provisionerName: "heathcliff.eu/predictable-path-provisioner"
 
-# Create a storage class for the provisioner
+# Create a storage class for the provisioner.
 storageClass:
-  # Whether to create a storage class for the provisioner
+  # Whether to create a storage class for the provisioner.
   create: true
-  # The name of the storage class
+  # The name of the storage class.
   name: "p3"
-  # Should the storage class be the default one
+  # Should the storage class be the default one.
   default: true
-  # The reclaim policy for the storage class
+  # The reclaim policy for the storage class.
   reclaimPolicy: "Delete"
-  # The volume binding mode for the storage class
-  volumeBindingMode: "Immediate"
+  # The volume binding mode for the storage class.
+  # Default should be "WaitForFirstConsumer" to ensure that volumes are scheduled to the correct node.
+  # When using immediate, the provisioner will create volumes on a random node, which can lead to scheduling issues.
+  volumeBindingMode: "WaitForFirstConsumer"
   # The base path under which the provisioner will create volumes.
   basePath: "/var/lib/predictable-path-provisioner"
   # The path template for the provisioner to create volumes.
@@ -48,17 +50,17 @@ storageClass:
 
 # This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
 serviceAccount:
-  # Specifies whether a service account should be created
+  # Specifies whether a service account should be created.
   create: true
-  # Automatically mount a ServiceAccount's API credentials?
+  # Automatically mount a ServiceAccount's API credentials.
   automount: true
-  # Annotations to add to the service account
+  # Annotations to add to the service account.
   annotations: {}
   # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
+  # If not set and create is true, a name is generated using the fullname template.
   name: ""
 
-# RBAC configuration
+# RBAC configuration.
 rbac:
   create: true
 

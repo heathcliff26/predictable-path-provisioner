@@ -30,7 +30,7 @@ parameters:
   basePath: "/var/lib/predictable-path-provisioner"
   pathTemplate: "{{pvc.namespace}}/{{pvc.name}}"
 reclaimPolicy: Delete
-volumeBindingMode: Immediate
+volumeBindingMode: WaitForFirstConsumer
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

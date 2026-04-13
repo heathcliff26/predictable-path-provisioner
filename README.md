@@ -26,9 +26,10 @@ A Kubernetes external dynamic provisioner that creates local PersistentVolumes u
 
 ## Important considerations
 
-- There is mechanism to prevent path collisions. Use custom name templates at your own risk.
+- There is no mechanism to prevent path collisions. Use custom name templates at your own risk.
 - This is mostly a hobby project, intended for my own use. Use at your own risk.
-- Only AccessModes `ReadWriteOnce` and `ReadWriteOncePod` is supported.
+- Only AccessModes `ReadWriteOnce` and `ReadWriteOncePod` are supported.
+- When using VolumeBindingMode `Immediate`, volumes are scheduled on a random node. It is recommended to use `WaitForFirstConsumer` to ensure the k8s scheduler decides the placement.
 
 ## Installation
 
@@ -74,7 +75,7 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "true"
 provisioner: heathcliff.eu/predictable-path-provisioner
 reclaimPolicy: Delete
-volumeBindingMode: Immediate
+volumeBindingMode: WaitForFirstConsumer
 ```
 This would result in the Persistent Volume for the Claim `default/test` being created under `/var/lib/predictable-path-provisioner/default/test`.
 
@@ -92,7 +93,7 @@ parameters:
     basePath: /data/p3
     pathTemplate: pvc-{{pvc.uid}}
 reclaimPolicy: Delete
-volumeBindingMode: Immediate
+volumeBindingMode: WaitForFirstConsumer
 ```
 This would result in the Persistent Volume being created under `/data/p3/pvc-<some-uid>`
 

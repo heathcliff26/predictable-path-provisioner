@@ -349,3 +349,7 @@ func TestIsForCurrentNode(t *testing.T) {
 		})
 	}
 }
+
+func pointer[T any](v T) *T {
+	return &v
+}

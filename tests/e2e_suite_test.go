@@ -87,9 +87,9 @@ func TestE2E(t *testing.T) {
 	}
 
 	simplePVCFeat := newSimplePVCFeature("DefaultSC", "test-simple-pvc", "simple-pvc.yaml", "default-sc")
-	waitForFirstConsumerFeat := newSimplePVCFeature("WaitForFirstConsumer", "test-wait-for-consumer", "wait-for-consumer.yaml", "test-pvc")
+	immediateFeat := newSimplePVCFeature("Immediate", "test-immediate", "immediate.yaml", "test-pvc")
 
-	testenv.TestInParallel(t, simplePVCFeat, waitForFirstConsumerFeat)
+	testenv.TestInParallel(t, simplePVCFeat, immediateFeat)
 }
 
 func newSimplePVCFeature(featName, nsName, manifest, pvcName string) features.Feature {

@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/v13/controller"
 )
@@ -63,6 +64,12 @@ func (p *provisioner) Provision(_ context.Context, opts controller.ProvisionOpti
 	}
 	if opts.PVC == nil {
 		return nil, controller.ProvisioningFinished, fmt.Errorf("persistent volume claim is required")
+	}
+	if opts.StorageClass.VolumeBindingMode != nil && *opts.StorageClass.VolumeBindingMode == storagev1.VolumeBindingWaitForFirstConsumer && opts.SelectedNodeName != p.node {
+		slog.Debug("Provision ignored: volume is not for this node", "pvc.Name", opts.PVC.Name, "pvc.Namespace", opts.PVC.Namespace, "storageClass", opts.StorageClass.Name, "selectedNode", opts.SelectedNodeName)
+		return nil, controller.ProvisioningFinished, &controller.IgnoredError{
+			Reason: "Wrong node",
+		}
 	}
 	if slices.Contains(opts.PVC.Spec.AccessModes, corev1.ReadWriteMany) || slices.Contains(opts.PVC.Spec.AccessModes, corev1.ReadOnlyMany) {
 		return nil, controller.ProvisioningFinished, fmt.Errorf("unsupported access modes: volumes can only be mounted on a single host")
