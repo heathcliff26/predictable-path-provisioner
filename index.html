@@ -59,7 +59,7 @@
 				
 				<option value="file1">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/provisioner.go (97.4%)</option>
 				
-				<option value="file2">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/root.go (59.3%)</option>
+				<option value="file2">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/root.go (60.7%)</option>
 				
 				<option value="file3">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/utils.go (100.0%)</option>
 				
@@ -140,6 +140,11 @@ import (
         storagev1 "k8s.io/api/storage/v1"
         metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
         "sigs.k8s.io/sig-storage-lib-external-provisioner/v13/controller"
+)
+
+const (
+        envNodeName        = "NODE_NAME"
+        envProvisionerName = "PROVISIONER_NAME"
 )
 
 const (
@@ -350,13 +355,14 @@ func NewRootCommand() *cobra.Command <span class="cov8" title="1">{
 }
 
 func run() <span class="cov8" title="1">{
-        node := os.Getenv("NODE_NAME")
+        node := os.Getenv(envNodeName)
         if node == "" </span><span class="cov8" title="1">{
                 slog.Error("NODE_NAME environment variable is not set")
                 os.Exit(1)
         }</span>
+        <span class="cov8" title="1">provisionerName := getProvisionerName()
 
-        <span class="cov8" title="1">config, err := rest.InClusterConfig()
+        config, err := rest.InClusterConfig()
         if err != nil </span><span class="cov8" title="1">{
                 slog.Error("Failed to get kubeconfig, the provisioner should be run inside a kubernetes cluster", "err", err)
                 os.Exit(1)
@@ -367,16 +373,16 @@ func run() <span class="cov8" title="1">{
                 os.Exit(1)
         }</span>
 
-        <span class="cov0" title="0">slog.Info("Starting predictable-path-provisioner", "version", version.Version())
+        <span class="cov0" title="0">slog.Info("Starting predictable-path-provisioner", "version", version.Version(), "provisionerName", provisionerName, "node", node)
 
-        p := NewProvisioner(defaultProvisionerName, node)
+        p := NewProvisioner(provisionerName, node)
 
         ctx := context.Background()
 
         ctrl := controller.NewProvisionController(
                 ctx,
                 client,
-                defaultProvisionerName,
+                provisionerName,
                 p,
                 controller.LeaderElection(false),
         )
@@ -389,6 +395,7 @@ func run() <span class="cov8" title="1">{
 
 import (
         "fmt"
+        "os"
         "path/filepath"
         "strings"
 
@@ -484,6 +491,14 @@ func isForCurrentNode(nodeName string, affinity *corev1.VolumeNodeAffinity) bool
                 return false
         }</span>
         <span class="cov8" title="1">return expr.Key == "kubernetes.io/hostname" &amp;&amp; expr.Operator == corev1.NodeSelectorOpIn &amp;&amp; expr.Values[0] == nodeName</span>
+}
+
+func getProvisionerName() string <span class="cov8" title="1">{
+        name := os.Getenv(envProvisionerName)
+        if name == "" </span><span class="cov8" title="1">{
+                return defaultProvisionerName
+        }</span>
+        <span class="cov8" title="1">return name</span>
 }
 </pre>
 		
