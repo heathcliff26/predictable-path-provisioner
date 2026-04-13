@@ -57,7 +57,7 @@
 				
 				<option value="file0">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/log.go (100.0%)</option>
 				
-				<option value="file1">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/provisioner.go (97.1%)</option>
+				<option value="file1">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/provisioner.go (97.4%)</option>
 				
 				<option value="file2">github.com/heathcliff26/predictable-path-provisioner/pkg/provisioner/root.go (59.3%)</option>
 				
@@ -137,6 +137,7 @@ import (
         "slices"
 
         corev1 "k8s.io/api/core/v1"
+        storagev1 "k8s.io/api/storage/v1"
         metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
         "sigs.k8s.io/sig-storage-lib-external-provisioner/v13/controller"
 )
@@ -191,6 +192,12 @@ func (p *provisioner) Provision(_ context.Context, opts controller.ProvisionOpti
         }</span>
         <span class="cov8" title="1">if opts.PVC == nil </span><span class="cov8" title="1">{
                 return nil, controller.ProvisioningFinished, fmt.Errorf("persistent volume claim is required")
+        }</span>
+        <span class="cov8" title="1">if opts.StorageClass.VolumeBindingMode != nil &amp;&amp; *opts.StorageClass.VolumeBindingMode == storagev1.VolumeBindingWaitForFirstConsumer &amp;&amp; opts.SelectedNodeName != p.node </span><span class="cov8" title="1">{
+                slog.Debug("Provision ignored: volume is not for this node", "pvc.Name", opts.PVC.Name, "pvc.Namespace", opts.PVC.Namespace, "storageClass", opts.StorageClass.Name, "selectedNode", opts.SelectedNodeName)
+                return nil, controller.ProvisioningFinished, &amp;controller.IgnoredError{
+                        Reason: "Wrong node",
+                }
         }</span>
         <span class="cov8" title="1">if slices.Contains(opts.PVC.Spec.AccessModes, corev1.ReadWriteMany) || slices.Contains(opts.PVC.Spec.AccessModes, corev1.ReadOnlyMany) </span><span class="cov8" title="1">{
                 return nil, controller.ProvisioningFinished, fmt.Errorf("unsupported access modes: volumes can only be mounted on a single host")
