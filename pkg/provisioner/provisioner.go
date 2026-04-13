@@ -16,6 +16,7 @@ import (
 
 const (
 	defaultProvisionerName = "heathcliff.eu/predictable-path-provisioner"
+	EnvProvisionerName     = "PROVISIONER_NAME"
 	DefaultBasePath        = "/var/lib/predictable-path-provisioner"
 	defaultPathTemplate    = "{{pvc.namespace}}/{{pvc.name}}"
 

@@ -1,0 +1,43 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-custom-provisioner
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: custom-provisioner-pvc
+  namespace: test-custom-provisioner
+spec:
+  storageClassName: custom-p3
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Mi
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-pod
+  namespace: test-custom-provisioner
+spec:
+  containers:
+    - name: fedora
+      image: registry.fedoraproject.org/fedora:latest
+      command:
+        - /bin/bash
+        - -c
+        - |
+          echo "This is a test file for the custom provisioner PVC" > /data/test-file
+          ls -l /data
+          echo "Done"
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  restartPolicy: OnFailure
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: custom-provisioner-pvc

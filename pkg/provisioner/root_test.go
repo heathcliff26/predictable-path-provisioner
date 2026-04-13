@@ -16,6 +16,23 @@ func TestNewRootCommand(t *testing.T) {
 	assert.Equal(t, version.Name, cmd.Use)
 }
 
+func TestGetProvisionerName(t *testing.T) {
+	t.Run("DefaultName", func(t *testing.T) {
+		t.Setenv(EnvProvisionerName, "")
+
+		name := getProvisionerName()
+		assert.Equal(t, defaultProvisionerName, name, "Should return default provisioner name when env var is not set")
+	})
+
+	t.Run("CustomName", func(t *testing.T) {
+		customName := "custom.example.com/my-provisioner"
+		t.Setenv(EnvProvisionerName, customName)
+
+		name := getProvisionerName()
+		assert.Equal(t, customName, name, "Should return custom provisioner name from env var")
+	})
+}
+
 func TestRunMissingNodeName(t *testing.T) {
 	if os.Getenv("RUN_CRASH_TEST") == "1" {
 		os.Setenv("NODE_NAME", "")

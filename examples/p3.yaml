@@ -104,6 +104,8 @@ spec:
                   fieldPath: spec.nodeName
             - name: LOG_LEVEL
               value: info
+            - name: PROVISIONER_NAME
+              value: heathcliff.eu/predictable-path-provisioner
           volumeMounts:
             - name: rootfs
               mountPath: /host

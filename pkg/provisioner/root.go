@@ -42,12 +42,22 @@ func NewRootCommand() *cobra.Command {
 	return rootCmd
 }
 
+func getProvisionerName() string {
+	name := os.Getenv(EnvProvisionerName)
+	if name == "" {
+		return defaultProvisionerName
+	}
+	return name
+}
+
 func run() {
 	node := os.Getenv("NODE_NAME")
 	if node == "" {
 		slog.Error("NODE_NAME environment variable is not set")
 		os.Exit(1)
 	}
+
+	provisionerName := getProvisionerName()
 
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -60,16 +70,16 @@ func run() {
 		os.Exit(1)
 	}
 
-	slog.Info("Starting predictable-path-provisioner", "version", version.Version())
+	slog.Info("Starting predictable-path-provisioner", "version", version.Version(), "provisionerName", provisionerName)
 
-	p := NewProvisioner(defaultProvisionerName, node)
+	p := NewProvisioner(provisionerName, node)
 
 	ctx := context.Background()
 
 	ctrl := controller.NewProvisionController(
 		ctx,
 		client,
-		defaultProvisionerName,
+		provisionerName,
 		p,
 		controller.LeaderElection(false),
 	)

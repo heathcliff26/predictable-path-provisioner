@@ -16,10 +16,12 @@ import (
 const namespace = "p3"
 
 var testenv env.Environment
+var imageTag string
 
 func TestMain(m *testing.M) {
 	testenv = env.New()
 	clusterName := envconf.RandomName("p3-e2e", 24)
+	imageTag = clusterName
 
 	tmpDir := filepath.Join(os.TempDir(), clusterName)
 	err := os.MkdirAll(tmpDir, 0755)
