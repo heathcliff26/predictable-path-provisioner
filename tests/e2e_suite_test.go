@@ -87,10 +87,11 @@ func TestE2E(t *testing.T) {
 		t.Fatal("Failed to deploy p3, can't run tests")
 	}
 
-	simplePVCFeat := newSimplePVCFeature("DefaultSC", "test-simple-pvc", "simple-pvc.yaml", "default-sc")
-	immediateFeat := newSimplePVCFeature("Immediate", "test-immediate", "immediate.yaml", "test-pvc")
+	simplePVCFeat := newSimplePVCFeature("DefaultSC", "test-simple-pvc", "simple-pvc.yaml", provisioner.DefaultBasePath, "test-simple-pvc/test-pvc")
+	immediateFeat := newSimplePVCFeature("Immediate", "test-immediate", "immediate.yaml", provisioner.DefaultBasePath, "test-immediate/test-pvc")
+	customParametersFeat := newSimplePVCFeature("CustomParameters", "test-custom-parameters", "custom-parameters.yaml", "/tmp/p3", "pvc-test-pvc")
 
-	testenv.TestInParallel(t, simplePVCFeat, immediateFeat)
+	testenv.TestInParallel(t, simplePVCFeat, immediateFeat, customParametersFeat)
 
 	const (
 		customProvisionerNS     = "p3-custom"
@@ -228,7 +229,12 @@ func TestE2E(t *testing.T) {
 	testenv.Test(t, customProvisionerFeat)
 }
 
-func newSimplePVCFeature(featName, nsName, manifest, pvcName string) features.Feature {
+func newSimplePVCFeature(featName, nsName, manifest, basePath, pvcPath string) features.Feature {
+	const (
+		pvcName = "test-pvc"
+		podName = "test-pod"
+	)
+
 	var pvName, nodeName string
 
 	return features.New(featName).
@@ -273,7 +279,7 @@ func newSimplePVCFeature(featName, nsName, manifest, pvcName string) features.Fe
 			require := require.New(t)
 
 			var pod corev1.Pod
-			err := c.Client().Resources().Get(ctx, "test-pod", nsName, &pod)
+			err := c.Client().Resources().Get(ctx, podName, nsName, &pod)
 			require.NoError(err, "Should get test pod")
 
 			err = wait.For(conditions.New(c.Client().Resources()).PodPhaseMatch(&pod, corev1.PodSucceeded),
@@ -284,7 +290,7 @@ func newSimplePVCFeature(featName, nsName, manifest, pvcName string) features.Fe
 
 			nodeName = pod.Spec.NodeName
 
-			output := listNodePath(t, c, nodeName, nsName, filepath.Join(provisioner.DefaultBasePath, nsName, pvcName))
+			output := listNodePath(t, c, nodeName, nsName, filepath.Join(basePath, pvcPath))
 			require.Contains(output, "test-file", "Should have test file on disk")
 
 			return ctx
@@ -293,7 +299,7 @@ func newSimplePVCFeature(featName, nsName, manifest, pvcName string) features.Fe
 			require := require.New(t)
 
 			var pod corev1.Pod
-			err := c.Client().Resources().Get(ctx, "test-pod", nsName, &pod)
+			err := c.Client().Resources().Get(ctx, podName, nsName, &pod)
 			require.NoError(err, "Should get test pod")
 
 			err = c.Client().Resources().Delete(ctx, &pod)
@@ -316,8 +322,8 @@ func newSimplePVCFeature(featName, nsName, manifest, pvcName string) features.Fe
 			err = c.Client().Resources().Get(ctx, pvName, "", &pv)
 			require.Error(err, "PV should be deleted")
 
-			output := listNodePath(t, c, nodeName, nsName, filepath.Join(provisioner.DefaultBasePath, nsName))
-			require.NotContains(output, pvcName, "Should delete the hostpath directory from the node")
+			output := listNodePath(t, c, nodeName, nsName, filepath.Join(basePath, pvcPath))
+			require.Contains(output, "No such file or directory", "Should delete the hostpath directory from the node")
 
 			return ctx
 		}).
@@ -351,9 +357,9 @@ func listNodePath(t *testing.T, c *envconf.Config, nodeName, namespace, path str
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  "fedora",
-					Image: "registry.fedoraproject.org/fedora:latest",
-					Args:  []string{"ls", fmt.Sprintf("/host/%s", path)},
+					Name:    "fedora",
+					Image:   "registry.fedoraproject.org/fedora:latest",
+					Command: []string{"/bin/bash", "-c", fmt.Sprintf("ls /host/%s || true", path)},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "rootfs",
