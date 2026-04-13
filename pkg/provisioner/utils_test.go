@@ -350,6 +350,16 @@ func TestIsForCurrentNode(t *testing.T) {
 	}
 }
 
+func TestGetProvisionerName(t *testing.T) {
+	t.Run("Default", func(t *testing.T) {
+		assert.Equal(t, defaultProvisionerName, getProvisionerName(), "Should return default provisioner name when env variable not set")
+	})
+	t.Run("Custom", func(t *testing.T) {
+		t.Setenv(envProvisionerName, "test-provisioner")
+		assert.Equal(t, "test-provisioner", getProvisionerName(), "Should return custom provisioner name from env variable")
+	})
+}
+
 func pointer[T any](v T) *T {
 	return &v
 }

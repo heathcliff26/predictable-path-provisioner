@@ -2,6 +2,7 @@ package provisioner
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -97,4 +98,12 @@ func isForCurrentNode(nodeName string, affinity *corev1.VolumeNodeAffinity) bool
 		return false
 	}
 	return expr.Key == "kubernetes.io/hostname" && expr.Operator == corev1.NodeSelectorOpIn && expr.Values[0] == nodeName
+}
+
+func getProvisionerName() string {
+	name := os.Getenv(envProvisionerName)
+	if name == "" {
+		return defaultProvisionerName
+	}
+	return name
 }

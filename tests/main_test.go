@@ -17,9 +17,11 @@ const namespace = "p3"
 
 var testenv env.Environment
 
+var clusterName string
+
 func TestMain(m *testing.M) {
 	testenv = env.New()
-	clusterName := envconf.RandomName("p3-e2e", 24)
+	clusterName = envconf.RandomName("p3-e2e", 24)
 
 	tmpDir := filepath.Join(os.TempDir(), clusterName)
 	err := os.MkdirAll(tmpDir, 0755)

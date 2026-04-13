@@ -839,6 +839,7 @@ sigs.k8s.io/e2e-framework/pkg/types
 sigs.k8s.io/e2e-framework/pkg/utils
 sigs.k8s.io/e2e-framework/support
 sigs.k8s.io/e2e-framework/support/kind
+sigs.k8s.io/e2e-framework/third_party/helm
 sigs.k8s.io/e2e-framework/third_party/kind
 # sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730
 ## explicit; go 1.23

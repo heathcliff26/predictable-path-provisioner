@@ -1,0 +1,9 @@
+image:
+  repository: localhost/p3
+
+fullnameOverride: "p3-custom"
+logLevel: "debug"
+provisionerName: "heathcliff.eu/predictable-path-provisioner-custom"
+storageClass:
+  name: "p3-custom"
+  default: false
