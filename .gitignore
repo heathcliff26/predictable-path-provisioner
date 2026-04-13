@@ -10,3 +10,6 @@ coverprofile.out
 
 # Ignore files created for testing
 /test-*.yaml
+
+# Ignore e2e test outputs
+/logs

@@ -8,7 +8,15 @@ ARG TARGETARCH
 
 WORKDIR /app
 
-COPY . ./
+COPY vendor ./vendor
+
+COPY go.mod go.sum ./
+
+COPY hack ./hack
+
+COPY cmd ./cmd
+
+COPY pkg ./pkg
 
 RUN GOOS=linux GOARCH="${TARGETARCH}" hack/build.sh
 

@@ -14,7 +14,7 @@ import (
 func newStorageConfig(sc *storagev1.StorageClass) (storageConfig, error) {
 	basePath, ok := sc.Parameters[parameterBasePath]
 	if !ok {
-		basePath = defaultBasePath
+		basePath = DefaultBasePath
 	}
 	err := validateBasePath(basePath)
 	if err != nil {
@@ -75,7 +75,7 @@ func validatePathTemplate(pathTemplate string) error {
 		},
 	})
 
-	if filepath.Join(defaultBasePath, volume) != fmt.Sprintf("%s/%s", defaultBasePath, volume) {
+	if filepath.Join(DefaultBasePath, volume) != fmt.Sprintf("%s/%s", DefaultBasePath, volume) {
 		return fmt.Errorf("pathTemplate must evaluate to a relative path located within basePath")
 	}
 	return nil

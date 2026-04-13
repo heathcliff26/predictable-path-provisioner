@@ -137,7 +137,7 @@ func TestProvision(t *testing.T) {
 
 		p := NewProvisioner("test-name", "test-node")
 
-		tmpDir = filepath.Join(tmpDir, defaultBasePath)
+		tmpDir = filepath.Join(tmpDir, DefaultBasePath)
 		require.NoError(os.MkdirAll(tmpDir, 0755), "Should create base path successfully")
 		require.NoError(os.Chmod(tmpDir, 0500), "Should set base path permissions to read and execute only")
 

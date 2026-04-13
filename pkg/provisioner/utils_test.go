@@ -95,7 +95,7 @@ func TestNewStorageConfig(t *testing.T) {
 			Name:       "NoParameters",
 			Parameters: map[string]string{},
 			ExpectedConfig: storageConfig{
-				BasePath:     defaultBasePath,
+				BasePath:     DefaultBasePath,
 				PathTemplate: defaultPathTemplate,
 			},
 		},
