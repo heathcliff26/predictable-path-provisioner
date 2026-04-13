@@ -46,6 +46,17 @@ func TestProvision(t *testing.T) {
 			Error: "persistent volume claim is required",
 		},
 		{
+			Name: "VolumeNotForCurrentNode",
+			Opts: controller.ProvisionOptions{
+				StorageClass: &storagev1.StorageClass{
+					VolumeBindingMode: pointer(storagev1.VolumeBindingWaitForFirstConsumer),
+				},
+				PVC:              &corev1.PersistentVolumeClaim{},
+				SelectedNodeName: "other-node",
+			},
+			Error: "Wrong node",
+		},
+		{
 			Name: "PVCAccessModeRWX",
 			Opts: controller.ProvisionOptions{
 				StorageClass: &storagev1.StorageClass{},

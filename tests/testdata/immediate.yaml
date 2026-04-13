@@ -2,23 +2,23 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: test-wait-for-consumer
+  name: test-immediate
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: p3-wait-for-consumer
+  name: p3-immediate
 provisioner: heathcliff.eu/predictable-path-provisioner
 reclaimPolicy: Delete
-volumeBindingMode: WaitForFirstConsumer
+volumeBindingMode: Immediate
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: test-pvc
-  namespace: test-wait-for-consumer
+  namespace: test-immediate
 spec:
-  storageClassName: p3-wait-for-consumer
+  storageClassName: p3-immediate
   accessModes:
     - ReadWriteOnce
   resources:
@@ -29,7 +29,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: test-pod
-  namespace: test-wait-for-consumer
+  namespace: test-immediate
 spec:
   containers:
     - name: fedora
