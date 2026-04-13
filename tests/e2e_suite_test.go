@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
+	"sigs.k8s.io/e2e-framework/third_party/helm"
 )
 
 func TestE2E(t *testing.T) {
@@ -35,11 +36,11 @@ func TestE2E(t *testing.T) {
 		Assess("available", func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 			require := require.New(t)
 
-			var dep appsv1.DaemonSet
-			err := c.Client().Resources().Get(ctx, "p3", namespace, &dep)
+			var daemonset appsv1.DaemonSet
+			err := c.Client().Resources().Get(ctx, "p3", namespace, &daemonset)
 			require.NoError(err, "Should get p3 daemonset")
 
-			err = wait.For(conditions.New(c.Client().Resources()).DaemonSetReady(&dep),
+			err = wait.For(conditions.New(c.Client().Resources()).DaemonSetReady(&daemonset),
 				wait.WithTimeout(time.Minute*1),
 				wait.WithInterval(time.Second*5),
 			)
@@ -90,6 +91,141 @@ func TestE2E(t *testing.T) {
 	immediateFeat := newSimplePVCFeature("Immediate", "test-immediate", "immediate.yaml", "test-pvc")
 
 	testenv.TestInParallel(t, simplePVCFeat, immediateFeat)
+
+	const (
+		customProvisionerNS     = "p3-custom"
+		customProvisionerTestNS = "test-custom-provisioner"
+		customProvisionerPVC    = "test-pvc"
+	)
+
+	customProvisionerFeat := features.New("custom provisioner").
+		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			manager := helm.New(c.KubeconfigFile())
+			err := manager.RunInstall(
+				helm.WithName("p3-custom"),
+				helm.WithNamespace("p3-custom"),
+				helm.WithArgs(
+					"manifests/helm",
+					"--create-namespace",
+					"--values", "tests/testdata/values-custom-provisioner.yaml",
+					"--set", "image.tag="+clusterName,
+				),
+			)
+			require.NoError(err, "Should install provisioner with helm")
+
+			err = decoder.ApplyWithManifestDir(ctx, c.Client().Resources(), "tests/testdata/", "custom-provisioner.yaml", []resources.CreateOption{})
+			require.NoError(err, "Should apply manifest")
+
+			return ctx
+		}).
+		Assess("available", func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			var daemonset appsv1.DaemonSet
+			err := c.Client().Resources().Get(ctx, "p3-custom", customProvisionerNS, &daemonset)
+			require.NoError(err, "Should get p3 daemonset")
+
+			err = wait.For(conditions.New(c.Client().Resources()).DaemonSetReady(&daemonset),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "p3 daemonset should be ready")
+
+			pods := &corev1.PodList{}
+			err = c.Client().Resources(customProvisionerNS).List(ctx, pods)
+			require.NoError(err, "Should list pods in p3-custom namespace")
+
+			for _, pod := range pods.Items {
+				err = wait.For(conditions.New(c.Client().Resources()).PodConditionMatch(&pod, corev1.PodReady, corev1.ConditionTrue),
+					wait.WithTimeout(time.Minute*1),
+					wait.WithInterval(time.Second*5),
+				)
+				require.NoErrorf(err, "Pod %s on node %s should be ready", pod.Name, pod.Spec.NodeName)
+			}
+
+			return ctx
+		}).
+		Assess("pvc bound", func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      customProvisionerPVC,
+					Namespace: customProvisionerTestNS,
+				},
+			}
+			err := wait.For(conditions.New(c.Client().Resources()).ResourceMatch(pvc, func(obj k8s.Object) bool {
+				return obj.(*corev1.PersistentVolumeClaim).Status.Phase == corev1.ClaimBound
+			}),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "PVC should be bound")
+
+			pvs := &corev1.PersistentVolumeList{}
+			err = c.Client().Resources().List(ctx, pvs)
+			require.NoError(err, "Should list PV")
+
+			pvName := ""
+			for _, pv := range pvs.Items {
+				if pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Name == customProvisionerPVC && pv.Spec.ClaimRef.Namespace == customProvisionerTestNS {
+					pvName = pv.Name
+					break
+				}
+			}
+			require.NotEmpty(pvName, "PV should exist")
+
+			return ctx
+		}).
+		Assess("delete", func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			var pod corev1.Pod
+			err := c.Client().Resources().Get(ctx, "test-pod", customProvisionerTestNS, &pod)
+			require.NoError(err, "Should get test pod")
+
+			err = c.Client().Resources().Delete(ctx, &pod)
+			require.NoError(err, "Should delete test pod")
+
+			var pvc corev1.PersistentVolumeClaim
+			err = c.Client().Resources().Get(ctx, customProvisionerPVC, customProvisionerTestNS, &pvc)
+			require.NoError(err, "Should get PVC")
+
+			err = c.Client().Resources().Delete(ctx, &pvc)
+			require.NoError(err, "Should delete PVC")
+
+			err = wait.For(conditions.New(c.Client().Resources()).ResourceDeleted(&pvc),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "PVC should be deleted")
+
+			return ctx
+		}).
+		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			var ns corev1.Namespace
+			err := c.Client().Resources().Get(ctx, customProvisionerTestNS, "", &ns)
+			require.NoError(err, "Should get namespace")
+
+			err = c.Client().Resources().Delete(ctx, &ns)
+			require.NoError(err, "Should delete namespace")
+
+			manager := helm.New(c.KubeconfigFile())
+			err = manager.RunUninstall(
+				helm.WithName("p3-custom"),
+				helm.WithNamespace("p3-custom"),
+			)
+			require.NoError(err, "Should uninstall helm release")
+
+			return ctx
+		}).
+		Feature()
+
+	testenv.Test(t, customProvisionerFeat)
 }
 
 func newSimplePVCFeature(featName, nsName, manifest, pvcName string) features.Feature {

@@ -18,7 +18,7 @@ func TestNewRootCommand(t *testing.T) {
 
 func TestRunMissingNodeName(t *testing.T) {
 	if os.Getenv("RUN_CRASH_TEST") == "1" {
-		os.Setenv("NODE_NAME", "")
+		os.Setenv(envNodeName, "")
 		Execute()
 	}
 	execExitTest(t, "TestRunMissingNodeName", "NODE_NAME environment variable is not set")
@@ -26,7 +26,7 @@ func TestRunMissingNodeName(t *testing.T) {
 
 func TestRunMissingKubernetesConfig(t *testing.T) {
 	if os.Getenv("RUN_CRASH_TEST") == "1" {
-		os.Setenv("NODE_NAME", "test")
+		os.Setenv(envNodeName, "test")
 		Execute()
 	}
 	execExitTest(t, "TestRunMissingKubernetesConfig", "Failed to get kubeconfig, the provisioner should be run inside a kubernetes cluster")

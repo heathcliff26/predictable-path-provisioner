@@ -15,6 +15,11 @@ import (
 )
 
 const (
+	envNodeName        = "NODE_NAME"
+	envProvisionerName = "PROVISIONER_NAME"
+)
+
+const (
 	defaultProvisionerName = "heathcliff.eu/predictable-path-provisioner"
 	DefaultBasePath        = "/var/lib/predictable-path-provisioner"
 	defaultPathTemplate    = "{{pvc.namespace}}/{{pvc.name}}"
