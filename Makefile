@@ -16,6 +16,10 @@ image:
 test:
 	go test -v -coverprofile=coverprofile.out ./pkg/...
 
+# Run end-to-end tests
+test-e2e:
+	go test -count=1 -v ./tests/...
+
 # Update dependencies
 update-deps:
 	hack/update-deps.sh
@@ -65,6 +69,7 @@ help:
 	build \
 	image \
 	test \
+	test-e2e \
 	update-deps \
 	coverprofile \
 	lint \

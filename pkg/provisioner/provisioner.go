@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultProvisionerName = "heathcliff.eu/predictable-path-provisioner"
-	defaultBasePath        = "/var/lib/predictable-path-provisioner"
+	DefaultBasePath        = "/var/lib/predictable-path-provisioner"
 	defaultPathTemplate    = "{{pvc.namespace}}/{{pvc.name}}"
 
 	pvProvisionedByAnnotation = "pv.kubernetes.io/provisioned-by"
