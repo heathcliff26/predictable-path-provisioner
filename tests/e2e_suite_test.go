@@ -90,8 +90,9 @@ func TestE2E(t *testing.T) {
 	simplePVCFeat := newSimplePVCFeature("DefaultSC", "test-simple-pvc", "simple-pvc.yaml", provisioner.DefaultBasePath, "test-simple-pvc/test-pvc")
 	immediateFeat := newSimplePVCFeature("Immediate", "test-immediate", "immediate.yaml", provisioner.DefaultBasePath, "test-immediate/test-pvc")
 	customParametersFeat := newSimplePVCFeature("CustomParameters", "test-custom-parameters", "custom-parameters.yaml", "/tmp/p3", "pvc-test-pvc")
+	retainFeat := newRetainPVCFeature("Retain", "test-retain", "retain.yaml", provisioner.DefaultBasePath, "test-retain/test-pvc")
 
-	testenv.TestInParallel(t, simplePVCFeat, immediateFeat, customParametersFeat)
+	testenv.TestInParallel(t, simplePVCFeat, immediateFeat, customParametersFeat, retainFeat)
 
 	const (
 		customProvisionerNS     = "p3-custom"
@@ -332,6 +333,141 @@ func newSimplePVCFeature(featName, nsName, manifest, basePath, pvcPath string) f
 
 			var ns corev1.Namespace
 			err := c.Client().Resources().Get(ctx, nsName, "", &ns)
+			require.NoError(err, "Should get namespace")
+
+			err = c.Client().Resources().Delete(ctx, &ns)
+			require.NoError(err, "Should delete namespace")
+
+			return ctx
+		}).
+		Feature()
+}
+
+func newRetainPVCFeature(featName, nsName, manifest, basePath, pvcPath string) features.Feature {
+	const (
+		pvcName = "test-pvc"
+		podName = "test-pod"
+	)
+
+	var pvName, nodeName string
+
+	return features.New(featName).
+		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			err := decoder.ApplyWithManifestDir(ctx, c.Client().Resources(), "tests/testdata/", manifest, []resources.CreateOption{})
+			require.NoError(t, err, "Should apply manifest")
+
+			return ctx
+		}).
+		Assess("pvc bound", func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			pvc := &corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pvcName,
+					Namespace: nsName,
+				},
+			}
+			err := wait.For(conditions.New(c.Client().Resources()).ResourceMatch(pvc, func(obj k8s.Object) bool {
+				return obj.(*corev1.PersistentVolumeClaim).Status.Phase == corev1.ClaimBound
+			}),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "PVC should be bound")
+
+			pvs := &corev1.PersistentVolumeList{}
+			err = c.Client().Resources().List(ctx, pvs)
+			require.NoError(err, "Should list PV")
+
+			for _, pv := range pvs.Items {
+				if pv.Spec.ClaimRef != nil && pv.Spec.ClaimRef.Name == pvcName && pv.Spec.ClaimRef.Namespace == nsName {
+					pvName = pv.Name
+					break
+				}
+			}
+			require.NotEmpty(pvName, "PV should exist")
+
+			return ctx
+		}).
+		Assess("pv writable", func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			var pod corev1.Pod
+			err := c.Client().Resources().Get(ctx, podName, nsName, &pod)
+			require.NoError(err, "Should get test pod")
+
+			err = wait.For(conditions.New(c.Client().Resources()).PodPhaseMatch(&pod, corev1.PodSucceeded),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "Test pod should complete successfully")
+
+			nodeName = pod.Spec.NodeName
+
+			output := listNodePath(t, c, nodeName, nsName, filepath.Join(basePath, pvcPath))
+			require.Contains(output, "test-file", "Should have test file on disk")
+
+			return ctx
+		}).
+		Assess("retain on delete", func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			var pod corev1.Pod
+			err := c.Client().Resources().Get(ctx, podName, nsName, &pod)
+			require.NoError(err, "Should get test pod")
+
+			err = c.Client().Resources().Delete(ctx, &pod)
+			require.NoError(err, "Should delete test pod")
+
+			var pvc corev1.PersistentVolumeClaim
+			err = c.Client().Resources().Get(ctx, pvcName, nsName, &pvc)
+			require.NoError(err, "Should get PVC")
+
+			err = c.Client().Resources().Delete(ctx, &pvc)
+			require.NoError(err, "Should delete PVC")
+
+			err = wait.For(conditions.New(c.Client().Resources()).ResourceDeleted(&pvc),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "PVC should be deleted")
+
+			pv := &corev1.PersistentVolume{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: pvName,
+				},
+			}
+			err = wait.For(conditions.New(c.Client().Resources()).ResourceMatch(pv, func(obj k8s.Object) bool {
+				return obj.(*corev1.PersistentVolume).Status.Phase == corev1.VolumeReleased
+			}),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "PV should be retained and move to Released")
+
+			output := listNodePath(t, c, nodeName, nsName, filepath.Join(basePath, pvcPath))
+			require.Contains(output, "test-file", "Hostpath directory should remain for Retain policy")
+
+			return ctx
+		}).
+		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			require := require.New(t)
+
+			var pv corev1.PersistentVolume
+			err := c.Client().Resources().Get(ctx, pvName, "", &pv)
+			require.NoError(err, "Should get retained PV")
+
+			err = c.Client().Resources().Delete(ctx, &pv)
+			require.NoError(err, "Should delete retained PV")
+
+			err = wait.For(conditions.New(c.Client().Resources()).ResourceDeleted(&pv),
+				wait.WithTimeout(time.Minute*1),
+				wait.WithInterval(time.Second*5),
+			)
+			require.NoError(err, "PV should be deleted")
+
+			var ns corev1.Namespace
+			err = c.Client().Resources().Get(ctx, nsName, "", &ns)
 			require.NoError(err, "Should get namespace")
 
 			err = c.Client().Resources().Delete(ctx, &ns)
