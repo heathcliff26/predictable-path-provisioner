@@ -117,3 +117,4 @@ spec:
         - name: rootfs
           hostPath:
             path: /
+            type: Directory
