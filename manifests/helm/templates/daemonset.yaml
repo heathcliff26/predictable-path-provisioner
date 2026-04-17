@@ -62,6 +62,7 @@ spec:
         - name: rootfs
           hostPath:
             path: /
+            type: Directory
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
