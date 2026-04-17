@@ -90,10 +90,7 @@ spec:
       containers:
         - name: p3
           securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
+            privileged: true
             readOnlyRootFilesystem: true
           image: "ghcr.io/heathcliff26/p3:latest"
           imagePullPolicy: IfNotPresent

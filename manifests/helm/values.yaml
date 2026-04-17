@@ -76,10 +76,7 @@ podSecurityContext: {}
 
 securityContext:
   readOnlyRootFilesystem: true
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
+  privileged: true
 
 # This is to setup resource requests and limits.
 resources:
