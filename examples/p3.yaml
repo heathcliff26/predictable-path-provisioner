@@ -106,6 +106,10 @@ spec:
               value: info
             - name: PROVISIONER_NAME
               value: heathcliff.eu/predictable-path-provisioner
+          resources:
+            requests:
+              cpu: 2m
+              memory: 50Mi
           volumeMounts:
             - name: rootfs
               mountPath: /host
