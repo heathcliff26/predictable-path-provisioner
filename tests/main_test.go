@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,13 +40,13 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	err = utils.RunCommandWithSeperatedOutput("make REPOSITORY=localhost TAG="+clusterName+" image", os.Stdout, os.Stderr)
+	err = utils.RunCommandWithSeperatedOutputContext(context.Background(), "make REPOSITORY=localhost TAG="+clusterName+" image", os.Stdout, os.Stderr)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	err = utils.RunCommandWithSeperatedOutput("make REPOSITORY=localhost TAG="+clusterName+" manifests", os.Stdout, os.Stderr)
+	err = utils.RunCommandWithSeperatedOutputContext(context.Background(), "make REPOSITORY=localhost TAG="+clusterName+" manifests", os.Stdout, os.Stderr)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -53,7 +54,7 @@ func TestMain(m *testing.M) {
 
 	imageArchive := filepath.Join(tmpDir, "p3-image.tar")
 
-	err = utils.RunCommandWithSeperatedOutput(fmt.Sprintf("podman save -o %s localhost/p3:%s", imageArchive, clusterName), os.Stdout, os.Stderr)
+	err = utils.RunCommandWithSeperatedOutputContext(context.Background(), fmt.Sprintf("podman save -o %s localhost/p3:%s", imageArchive, clusterName), os.Stdout, os.Stderr)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -76,7 +77,7 @@ func TestMain(m *testing.M) {
 	fmt.Print("\nRunning cleanup\n\n")
 
 	fmt.Printf("Deleting kind cluster %s\n", clusterName)
-	err = utils.RunCommandWithSeperatedOutput("kind delete cluster --name "+clusterName, os.Stdout, os.Stderr)
+	err = utils.RunCommandWithSeperatedOutputContext(context.Background(), "kind delete cluster --name "+clusterName, os.Stdout, os.Stderr)
 	if err != nil {
 		fmt.Println(err)
 		exitCode = 1
