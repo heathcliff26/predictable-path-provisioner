@@ -2,7 +2,6 @@
 [![Coverage Status](https://coveralls.io/repos/github/heathcliff26/predictable-path-provisioner/badge.svg)](https://coveralls.io/github/heathcliff26/predictable-path-provisioner)
 [![Editorconfig Check](https://github.com/heathcliff26/predictable-path-provisioner/actions/workflows/editorconfig-check.yaml/badge.svg?event=push)](https://github.com/heathcliff26/predictable-path-provisioner/actions/workflows/editorconfig-check.yaml)
 [![Generate go test cover report](https://github.com/heathcliff26/predictable-path-provisioner/actions/workflows/go-testcover-report.yaml/badge.svg)](https://github.com/heathcliff26/predictable-path-provisioner/actions/workflows/go-testcover-report.yaml)
-[![Renovate](https://github.com/heathcliff26/predictable-path-provisioner/actions/workflows/renovate.yaml/badge.svg)](https://github.com/heathcliff26/predictable-path-provisioner/actions/workflows/renovate.yaml)
 
 # P3 (Predictable Path Provisioner)
 
