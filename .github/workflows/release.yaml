@@ -37,7 +37,8 @@ jobs:
 
   build:
     uses: ./.github/workflows/ci.yaml
-    needs: tag
+    needs:
+      - tag
     permissions:
       contents: read
       packages: write
@@ -47,9 +48,36 @@ jobs:
       latest: ${{ inputs.latest }}
     secrets: inherit
 
+  build-manifests:
+    uses: heathcliff26/ci/.github/workflows/golang-build.yaml@main
+    permissions:
+      contents: read
+    needs:
+      - tag
+    with:
+      release: "${{ inputs.tag }}"
+      artifact: "manifests/release/*.yaml"
+      artifact-name: "manifests"
+      cmd: "make manifests"
+      cache: false
+    secrets: inherit
+
+  push-helm:
+    uses: heathcliff26/ci/.github/workflows/push-helm-chart.yaml@main
+    needs:
+      - build
+      - build-manifests
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: "${{ inputs.tag }}"
+    secrets: inherit
+
   release:
     uses: heathcliff26/ci/.github/workflows/release.yaml@main
-    needs: build
+    needs:
+      - push-helm
     permissions:
       contents: write
     with:
