@@ -36,7 +36,8 @@ helm template "${base_dir}/manifests/helm" \
     | grep -v '# Source: predictable-path-provisioner/templates/' \
     | grep -v 'helm.sh/chart: predictable-path-provisioner' \
     | grep -v 'app.kubernetes.io/managed-by: Helm' \
-    | sed "s/v0.0.0/${TAG}/g" >> "${deployment_file}"
+    | sed "s/v0.0.0/${TAG}/g" \
+    | sed '/^$/N;/^\n---$/s/^\n//' >> "${deployment_file}"
 
 echo "Wrote manifests to ${output_dir}"
 
